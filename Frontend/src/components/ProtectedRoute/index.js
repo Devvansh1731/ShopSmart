@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import Cookies from 'js-cookies';
+import Cookies from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
 
 const ProtectedRoute = (props) => {
@@ -7,16 +7,16 @@ const ProtectedRoute = (props) => {
     const navigate = useNavigate();
     
     useEffect(() => {
-        const token = Cookies.getItem('jwtToken');
-        const adminToken = localStorage.getItem('adminJwtToken');
+        const token = Cookies.get('jwtToken');
+        const adminToken = Cookies.get('adminJwtToken');
         
         if (!token && !adminToken) {
             navigate('/login');
             return;
         }
         
-        // If it's an admin token, redirect to admin dashboard
-        if (adminToken) {
+        // If it's an admin token and no user token, redirect to admin dashboard
+        if (adminToken && !token) {
             navigate('/admin/dashboard');
             return;
         }

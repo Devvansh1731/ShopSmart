@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Form, Button, Card } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookies';
+import Cookies from 'js-cookie';
 import Header from '../components/Header';
 import { API_BASE_URL } from '../context/context';
 
@@ -15,21 +15,27 @@ const AdminLogin = () => {
         email: '',
         password: '',
     });
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const navigate = useNavigate();
-    const token = Cookies.getItem('jwtToken');
-    const adminToken = localStorage.getItem('adminJwtToken');
 
     useEffect(() => {
+        const token = Cookies.get('jwtToken');
+        const adminToken = Cookies.get('adminJwtToken');
+
         if (token) {
             navigate('/'); // Redirect to home if user token exists
         } else if (adminToken) {
             navigate('/admin/dashboard'); // Redirect to admin dashboard if admin token exists
         }
-    }, [navigate, token, adminToken]);
+    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setIsLoading(true);
+
         try {
             const response = await fetch(`${API_BASE_URL}/adminlogin`, {
                 method: 'POST',
@@ -39,23 +45,25 @@ const AdminLogin = () => {
                 body: JSON.stringify(formData),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                const data = await response.json();
                 if (data.token && data.user.isAdmin) {
-                    localStorage.setItem('adminJwtToken', data.token);
-                    localStorage.setItem('adminName', data.user.firstname);
-                    localStorage.setItem('adminId', data.user._id);
-                    alert('Admin Login Successful');
+                    Cookies.set('adminJwtToken', data.token, { expires: 30 });
+                    Cookies.set('adminName', data.user.firstname, { expires: 30 });
+                    Cookies.set('adminId', data.user._id, { expires: 30 });
                     navigate('/admin/dashboard');
                 } else {
-                    alert('Invalid admin credentials');
+                    setError('Invalid admin credentials');
                 }
             } else {
-                alert('Invalid email or password');
+                setError(data.message || 'Invalid email or password');
             }
         } catch (error) {
             console.error('Error during login:', error);
-            alert('Error during login. Please try again.');
+            setError('Error during login. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -71,6 +79,7 @@ const AdminLogin = () => {
                 <Card className="shadow p-4" style={{ width: '400px' }}>
                     <Card.Body>
                         <h2 className="mb-4">Admin Login</h2>
+                        {error && <div className="alert alert-danger">{error}</div>}
                         <Form onSubmit={handleSubmit}>
                             {commonFields.map((field) => (
                                 <Form.Group style={{ textAlign: 'start', marginBottom: '10px' }} controlId={field.controlId} key={field.controlId}>
@@ -82,13 +91,20 @@ const AdminLogin = () => {
                                         value={formData[field.controlId]}
                                         onChange={handleInputChange}
                                         required
+                                        disabled={isLoading}
                                     />
                                 </Form.Group>
                             ))}
-                            <Button type="submit" className="btn-primary w-100 mt-3">Login</Button>
+                            <Button 
+                                type="submit" 
+                                className="btn-primary w-100 mt-3"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Logging in...' : 'Login'}
+                            </Button>
                         </Form>
-                        <p>
-                            Don't have an account? <Link to="/asignup">Sign Up</Link>
+                        <p className="mt-3 mb-0">
+                            Don't have an account? <Link to="/admin/signup">Sign Up</Link>
                         </p>
                     </Card.Body>
                 </Card>
